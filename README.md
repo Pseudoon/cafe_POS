@@ -2,8 +2,6 @@
 
 An enterprise-grade, ultra-minimalist dark & light luxury Point-of-Sale (POS), Kitchen Display System (KDS), and Analytics Hub built for modern high-volume cafés. Inspired by the meticulous design discipline of **Linear**, the spatial precision of **Apple**, and the structural transaction reliability of **Square POS**.
 
-![POS Interface Preview](https://via.placeholder.com/1200x600/0B0F14/FFFFFF?text=Unity+$hop+Artisan+POS+Core)
-
 ---
 
 ## 🎨 Design Philosophy & Architecture
