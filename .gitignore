@@ -1,0 +1,4 @@
+*.db
+cafe.db
+node_modules/
+.env

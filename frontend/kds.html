@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unity $hop - Kitchen Center</title>
+    
+    <script>
+        const activeRole = localStorage.getItem("pos_session_role");
+        const structuralToken = localStorage.getItem("fresh_login_token");
+        if (!structuralToken || (activeRole !== "kitchen" && activeRole !== "admin")) {
+            localStorage.clear();
+            const gateUrlPath = window.location.href.substring(0, window.location.href.lastIndexOf("/")) + "/index.html";
+            alert("Security Enforcement: Session missing or invalid.");
+            window.location.replace(gateUrlPath);
+        }
+        if (localStorage.theme === 'light') { document.documentElement.classList.remove('dark'); }
+        else { document.documentElement.classList.add('dark'); }
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] } } }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark .custom-scroll::-webkit-scrollbar-thumb { background: #334155; }
+        .interactive-node { transition: all 0.2s ease; }
+        .interactive-node:active { transform: scale(0.99); }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-[#0B0F14] text-slate-900 dark:text-slate-100 h-screen flex flex-col overflow-hidden select-none transition-colors duration-300">
+
+    <header class="bg-white dark:bg-[#111827] border-b border-slate-200 dark:border-slate-800 px-8 py-5 flex flex-col sm:flex-row justify-between items-center shrink-0 gap-4 transition-colors duration-300 z-10">
+        <div class="flex items-center space-x-6">
+            <h1 class="text-sm font-extrabold tracking-widest text-slate-900 dark:text-white uppercase">KITCHEN CENTER</h1>
+            <div id="ws-state" class="text-xs font-bold flex items-center space-x-2"></div>
+        </div>
+        
+        <div class="flex items-center space-x-4 w-full sm:w-auto">
+            <input id="kds-search-bar" type="text" oninput="loadTickets()" placeholder="Search tickets..." class="bg-slate-100 dark:bg-[#0B0F14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs w-64 focus:outline-none text-slate-900 dark:text-white focus:border-indigo-500 transition-colors">
+            <button onclick="loadTickets()" class="bg-white dark:bg-[#111827] hover:bg-slate-100 dark:hover:bg-[#171F2B] border border-slate-200 dark:border-slate-800 px-5 py-2.5 rounded-xl text-xs font-bold transition-colors shadow-sm interactive-node cursor-pointer">Refresh</button>
+            <button onclick="toggleTheme()" class="p-2.5 rounded-xl bg-slate-100 dark:bg-[#0B0F14] border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors interactive-node cursor-pointer">
+                <svg class="w-4 h-4 dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                <svg class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 p-8 flex space-x-8 overflow-x-auto overflow-y-hidden custom-scroll">
+        
+        <section class="w-96 flex flex-col h-full bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-[2rem] p-6 shrink-0 shadow-sm transition-colors duration-300">
+            <div class="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 pb-3 border-b border-slate-100 dark:border-[#0B0F14] mb-5 flex justify-between items-center transition-colors">
+                <span class="flex items-center gap-2">New Queue</span> 
+                <span id="count-to-cook" class="text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/40 text-[10px] px-2 py-0.5 rounded-md font-mono font-bold">0</span>
+            </div>
+            <div id="lane-to-cook" class="flex-1 overflow-y-auto space-y-4 pr-1 custom-scroll"></div>
+        </section>
+
+        <section class="w-96 flex flex-col h-full bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-[2rem] p-6 shrink-0 shadow-sm transition-colors duration-300">
+            <div class="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 pb-3 border-b border-slate-100 dark:border-[#0B0F14] mb-5 flex justify-between items-center transition-colors">
+                <span class="flex items-center gap-2">Preparing</span> 
+                <span id="count-preparing" class="text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/40 text-[10px] px-2 py-0.5 rounded-md font-mono font-bold">0</span>
+            </div>
+            <div id="lane-preparing" class="flex-1 overflow-y-auto space-y-4 pr-1 custom-scroll"></div>
+        </section>
+        
+    </main>
+
+    <audio id="bell-alert-audio" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-600.wav" preload="auto"></audio>
+
+    <script>
+        const API = '/api'; 
+        const WS_URL = 'ws://' + window.location.host;
+        let previousTicketCount = 0;
+
+        function connect() {
+            const ws = new WebSocket(WS_URL);
+            ws.onopen = () => {
+                document.getElementById('ws-state').innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider">Live</span>`;
+                loadTickets();
+            };
+            ws.onmessage = () => loadTickets();
+            ws.onclose = () => {
+                document.getElementById('ws-state').innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500"></span><span class="text-rose-600 dark:text-rose-400 text-[10px] font-bold uppercase tracking-wider">Offline</span>`;
+                setTimeout(connect, 3000);
+            };
+        }
+
+        async function loadTickets() {
+            try {
+                const [resTickets, resTables] = await Promise.all([fetch(`${API}/kds/orders`), fetch(`${API}/tables`)]);
+                const tickets = await resTickets.json(); const tables = await resTables.json();
+                
+                if (tickets.length > previousTicketCount) {
+                    try { document.getElementById('bell-alert-audio').play(); } catch(e){}
+                }
+                previousTicketCount = tickets.length;
+                
+                drawLanes(tickets, tables);
+            } catch (err) { console.error(err); }
+        }
+
+        function drawLanes(tickets, tables) {
+            const toCookLane = document.getElementById('lane-to-cook');
+            const preparingLane = document.getElementById('lane-preparing');
+            const searchStr = document.getElementById('kds-search-bar').value.toLowerCase();
+            
+            toCookLane.innerHTML = ''; preparingLane.innerHTML = '';
+            let cCook = 0; let cPrep = 0;
+
+            tickets.forEach(t => {
+                const hasMatchingProduct = t.items.some(i => i.product_name.toLowerCase().includes(searchStr));
+                if (searchStr && !hasMatchingProduct) return;
+
+                const tableObj = tables.find(tbl => tbl.id === t.table_id);
+                const tableLabel = tableObj ? tableObj.table_number : 'Takeaway';
+
+                const itemsHtml = (t.items || []).map(i => {
+                    const lineState = i.is_cooked === 1;
+                    return `
+                        <div onclick="toggleLineFulfillment('${i.id}', ${lineState ? 0 : 1})" class="flex justify-between items-center text-xs py-3 border-b border-slate-100 dark:border-[#171F2B] cursor-pointer hover:bg-slate-50 dark:hover:bg-[#171F2B] px-3 rounded-xl transition-colors last:border-0 select-none">
+                            <span class="font-medium ${lineState ? 'line-through text-slate-400 dark:text-slate-500 decoration-slate-300 dark:decoration-slate-600' : 'text-slate-900 dark:text-slate-200'}">${i.product_name}</span>
+                            <span class="text-[10px] font-mono font-bold bg-slate-100 dark:bg-[#0B0F14] px-2 py-1 rounded-md border border-slate-200 dark:border-[#171F2B] ${lineState ? 'text-slate-400' : 'text-indigo-600 dark:text-indigo-400'}">x${i.quantity}</span>
+                        </div>
+                    `;
+                }).join('');
+
+                let controlBtnHtml = '';
+                if(t.kds_status === 'To Cook') {
+                    cCook++;
+                    controlBtnHtml = `<button onclick="shiftStage('${t.id}', 'Preparing')" class="w-full mt-4 bg-slate-100 dark:bg-[#171F2B] hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-800 dark:text-white py-3.5 rounded-xl text-[11px] font-bold tracking-wider uppercase transition-colors interactive-node cursor-pointer">Start Prep</button>`;
+                } else if(t.kds_status === 'Preparing') {
+                    cPrep++;
+                    controlBtnHtml = `<button onclick="shiftStage('${t.id}', 'Completed')" class="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl text-[11px] font-bold tracking-wider uppercase shadow-sm transition-colors interactive-node cursor-pointer">Dispatch</button>`;
+                }
+
+                const cardHtml = `
+                    <div class="bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-[#171F2B] p-5 rounded-2xl shadow-sm space-y-3 flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-colors duration-200">
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 tracking-wider">${t.order_number}</span>
+                                <span class="bg-white dark:bg-[#111827] text-slate-600 dark:text-slate-400 text-[9px] px-2.5 py-1 rounded-md font-bold uppercase border border-slate-200 dark:border-[#171F2B] transition-colors">${tableLabel}</span>
+                            </div>
+                            <div class="text-[9px] font-bold text-slate-500 dark:text-slate-500 uppercase tracking-widest font-mono">Elapsed: ${formatElapsedMinutes(t.created_at)}</div>
+                            <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#171F2B] rounded-xl mt-4 max-h-48 overflow-y-auto custom-scroll p-1 transition-colors">${itemsHtml}</div>
+                        </div>
+                        ${controlBtnHtml}
+                    </div>
+                `;
+                
+                if(t.kds_status === 'To Cook') toCookLane.innerHTML += cardHtml;
+                if(t.kds_status === 'Preparing') preparingLane.innerHTML += cardHtml;
+            });
+
+            document.getElementById('count-to-cook').innerText = cCook;
+            document.getElementById('count-preparing').innerText = cPrep;
+        }
+
+        async function shiftStage(id, stage) {
+            await fetch(`${API}/kds/update-stage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: id, next_stage: stage }) });
+            loadTickets();
+        }
+
+        async function toggleLineFulfillment(itemId, stateValue) {
+            await fetch(`${API}/kds/toggle-item`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item_id: itemId, is_cooked: stateValue }) });
+            loadTickets();
+        }
+
+        function formatElapsedMinutes(isoString) {
+            const diffMs = new Date() - new Date(isoString);
+            const diffMins = Math.floor(diffMs / 60000);
+            return diffMins <= 0 ? 'Just Now' : `${diffMins}m ago`;
+        }
+
+        setInterval(loadTickets, 30000);
+        window.onload = connect;
+    </script>
+</body>
+</html>

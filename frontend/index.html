@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unity $hop - Terminal Authentication Gateway</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Stable Tailwind CSS v3 Initialization -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] } } }
+        }
+    </script>
+    
+    <script>
+        if (localStorage.theme === 'light') { document.documentElement.classList.remove('dark'); }
+        else { document.documentElement.classList.add('dark'); }
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        }
+    </script>
+    <style>
+        .interactive-node { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .interactive-node:active { transform: scale(0.98); }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-[#0B0F14] text-slate-900 dark:text-slate-100 h-screen flex flex-col items-center justify-center select-none space-y-6 transition-colors duration-300 relative">
+
+    <!-- Theme Overriding Control Button -->
+    <div class="absolute top-6 right-6 z-50">
+        <button onclick="toggleTheme()" class="p-3 rounded-xl bg-white dark:bg-[#171F2B] border border-slate-200 dark:border-slate-800 shadow-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors interactive-node cursor-pointer">
+            <svg class="w-5 h-5 dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+            <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+        </button>
+    </div>
+
+    <!-- Shifts Ledger Cards -->
+    <div class="w-full max-w-md bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 p-5 rounded-2xl grid grid-cols-2 gap-4 text-center shadow-sm z-10 transition-colors duration-300">
+        <div><span class="text-[9px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest block">Last Session Close Date</span><span id="lbl-last-date" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-1 block">No Shifts Logged</span></div>
+        <div><span class="text-[9px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest block">Last Close Sale Total</span><span id="lbl-last-sale" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1 block">₹0.00</span></div>
+    </div>
+
+    <!-- Modern Minimal Input Shell -->
+    <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 w-full max-w-md p-10 rounded-[2rem] shadow-md space-y-8 z-10 transition-colors duration-300">
+        <div class="text-center space-y-1">
+            <h1 class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">Unity $hop</h1>
+            <p class="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">POS SYSTEM</p>
+            <div class="text-xs font-medium text-slate-500 dark:text-slate-400 pt-2">Authorized Access Only</div>
+        </div>
+        <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+            <div>
+                <label class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1.5 font-bold">Email Address</label>
+                <input id="auth-email" type="email" required placeholder="username@shop.com" class="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors">
+            </div>
+            <div>
+                <label class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1.5 font-bold">Security Password</label>
+                <input id="auth-password" type="password" required placeholder="••••••••" class="w-full bg-slate-50 dark:bg-[#0B0F14] border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors">
+            </div>
+            <button type="submit" class="w-full bg-[#5c3c54] dark:bg-indigo-600 hover:opacity-90 text-white text-xs font-bold py-3.5 rounded-xl transition-all uppercase tracking-wider mt-4 interactive-node shadow-sm cursor-pointer">Launch POS Session Terminal</button>
+        </form>
+    </div>
+
+    <script>
+        const API = '/api';
+        localStorage.clear();
+
+        async function fetchTerminalSessionMarkers() {
+            try {
+                const res = await fetch(`${API}/sessions/latest`); const data = await res.json();
+                if (data && data.open_date) {
+                    const parsedDate = new Date(data.close_date || data.open_date);
+                    document.getElementById('lbl-last-date').innerText = parsedDate.toLocaleDateString() + ' ' + parsedDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                    document.getElementById('lbl-last-sale').innerText = `₹${(data.closing_sales || 0).toFixed(2)}`;
+                }
+            } catch (e) {}
+        }
+
+        async function handleAuthSubmit(event) {
+            event.preventDefault();
+            try {
+                const response = await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: document.getElementById('auth-email').value, password: document.getElementById('auth-password').value }) });
+                const data = await response.json();
+                if (response.ok) {
+                    localStorage.setItem("pos_session_role", data.role);
+                    localStorage.setItem("pos_employee_name", data.name);
+                    
+                    const singleUseLockId = "LOCK-" + Math.floor(Math.random() * 100000);
+                    localStorage.setItem("fresh_login_token", singleUseLockId);
+
+                    const sRes = await fetch(`${API}/sessions/open`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ opened_by: data.name }) });
+                    const sData = await sRes.json(); localStorage.setItem("pos_active_session_id", sData.session_id);
+
+                    if (data.role === 'admin') window.location.href = "dashboard.html";
+                    else if (data.role === 'pos') window.location.href = "pos.html";
+                    else if (data.role === 'kitchen') window.location.href = "kds.html";
+                } else { alert(data.error || "Login parameters rejected."); }
+            } catch (e) { alert("Server offline."); }
+        }
+        window.onload = fetchTerminalSessionMarkers;
+    </script>
+</body>
+</html>
